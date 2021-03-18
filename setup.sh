@@ -7,15 +7,13 @@ echo "Setting up environment for SVF"
 ########
 
 export SVFHOME=`pwd`
-if [ -z "$LLVM_DIR" ]
-then
-   export LLVM_DIR=$SVFHOME/llvm-10.0.0.obj
+if [ -z "$LLVM_DIR" ]; then
+  export LLVM_DIR=$SVFHOME/llvm-10.0.0.obj
 fi
 
 echo "LLVM_DIR =" $LLVM_DIR
 
-if [ -z "$Z3_DIR" ]
-then
+if [ -z "$Z3_DIR" ]; then
   export Z3_DIR=$SVFHOME/z3.obj
 fi
 
@@ -26,17 +24,14 @@ export PATH=$LLVM_DIR/bin:$PATH
 
 #########
 #export PATH FOR SVF and LLVM executables
-#########                                                                 
-if [[ $1 == 'debug' ]]
-then
-PTAOBJTY='Debug'
+#########
+if [ "$1" = "debug" ]; then
+  PTAOBJTY='Debug'
 else
-PTAOBJTY='Release'
+  PTAOBJTY='Release'
 fi
 Build=$PTAOBJTY'-build'
 
 export PATH=$LLVM_DIR/bin:$PATH
 export PTABIN=$SVFHOME/$Build/bin
 export PATH=$PTABIN:$PATH
-
-

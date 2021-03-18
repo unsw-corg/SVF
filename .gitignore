@@ -18,3 +18,7 @@ doxygen/
 *.opt
 *.log
 *.status
+
+
+llvm-*.obj
+llvm.tar.xz
