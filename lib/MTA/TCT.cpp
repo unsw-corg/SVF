@@ -607,6 +607,11 @@ struct DOTGraphTraits<TCT*> : public DefaultDOTGraphTraits
     {
         return "Thread Create Tree";
     }
+    /// isNodeHidden - If the function returns true, the given node is not
+    /// displayed in the graph
+    static bool isNodeHidden(TCTNode *node) {
+        return node->reallyHideNode(false);
+    }
     /// Return function name;
     static std::string getNodeLabel(TCTNode *node, TCT *graph)
     {

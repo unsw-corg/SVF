@@ -34,6 +34,10 @@
 #include <system_error>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/FileSystem.h>		// for file open flag
+#include <llvm/Support/GraphWriter.h>
+#include <Util/SimpleOptions.h>
+#include <Graphs/GenericGraph.h>
+#include <string>
 
 namespace llvm
 {
@@ -49,11 +53,52 @@ public:
     {
     }
 
+
+    /*!
+     *  Write selected parts of the graph into dot file for debugging purpose
+     */
+    template<class GraphType>
+    static void SelectiveWriteGraphToFile(llvm::raw_ostream &O, ///< Stream for progress reporting
+                                          const std::string &GraphName, ///< Name will be used to form .dot file names.
+                                          const GraphType &GT, ///< The graph to dump.
+                                          bool simple = false, ///< Whether to dump short names or full.)
+                                          bool view = false) ///< View now
+    {
+        auto* genGraph = dynamic_cast<SVF::GenericGraphBase*>(GT);
+        if (SVF::SimpleOptions::DotLargestSubgraph ||
+            SVF::SimpleOptions::DotSeparateSubgraphs)
+        {
+            GT->createConnectedSubgraphs();
+        }
+        if (SVF::SimpleOptions::DotSeparateSubgraphs)
+        {
+            SVF::SubgraphIdTy numSubgraphs = genGraph->subgraphNum;
+            for (int subgraph_id = 1; subgraph_id <= numSubgraphs; ++subgraph_id) {
+                auto size = genGraph->subgraphSizeMap[subgraph_id];
+                std::string name = GraphName + "_size" + std::to_string(size) + "_id" + std::to_string(subgraph_id);
+                genGraph->currentSubgraphId = subgraph_id;
+                std::string filename = GraphPrinter::WriteGraphToFile(O, name, GT, simple);
+                if (!filename.empty() && view)
+                {
+                    llvm::DisplayGraph(filename, false);
+                }
+            }
+        }
+        else
+        {
+            std::string filename = GraphPrinter::WriteGraphToFile(O, GraphName, GT, simple);
+            if (!filename.empty() && view)
+            {
+                llvm::DisplayGraph(filename, false);
+            }
+        }
+    }
+
     /*!
      *  Write the graph into dot file for debugging purpose
      */
     template<class GraphType>
-    static void WriteGraphToFile(llvm::raw_ostream &O,
+    static std::string WriteGraphToFile(llvm::raw_ostream &O,
                                  const std::string &GraphName, const GraphType &GT, bool simple = false)
     {
         // Filename of the output dot file
@@ -71,11 +116,12 @@ public:
             {
                 O << "\n";
                 F.keep();
-                return;
+                return Filename;
             }
         }
         O << "  error opening file for writing!\n";
         F.os().clear_error();
+        return "";
     }
 
     /*!
@@ -112,6 +158,8 @@ public:
 
 } // End namespace llvm
 
-
+namespace SVF {
+    typedef llvm::GraphPrinter GraphPrinter;
+};
 
 #endif /* INCLUDE_UTIL_GRAPHPRINTER_H_ */

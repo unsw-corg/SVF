@@ -28,6 +28,7 @@
  */
 
 #include "Util/Options.h"
+#include "Util/SimpleOptions.h"
 #include "Util/SVFUtil.h"
 #include "SVF-FE/LLVMUtil.h"
 
@@ -379,4 +380,36 @@ void SVFFunction::viewCFGOnly() {
     if (fun != nullptr) {
         fun->viewCFGOnly();
     }
+}
+
+/// Decide whether to hide a node in a dot graph.
+/// Based on command line options, decide whether a node
+/// should be hidden. This is used to implement dumping of
+/// connected subgraphs by ignoring nodes not in the selected
+/// connected subgraph. The maybe_hide parameter tells if this
+/// node is of a sort that is not important and need not be
+/// displayed ordinarily. However, if --dot-show-all is
+/// specified then even these are shown.
+bool GenericNodeBase::reallyHideNode(bool maybe_hide)
+{
+    assert(graph && "Node not in graph");
+    SubgraphIdTy current_subgraph = graph->currentSubgraphId;
+    if (SimpleOptions::DotLargestSubgraph || SimpleOptions::DotSeparateSubgraphs)
+    {
+        // In these cases, the graph's current_subgraph will have been
+        // set to the desired subgraph, and nodes not in that
+        // subgraph should be hidden.
+        if (subgraphID != current_subgraph)
+        {
+            return true;
+        }
+    }
+    if (SimpleOptions::DotShowAll)
+    {
+        // If this option, we want to see all of the nodes of the
+        // graph (or the selected subgraph).
+        return false;
+    }
+    // Otherwise, use the judgement of the caller whether to hide.
+    return maybe_hide;
 }

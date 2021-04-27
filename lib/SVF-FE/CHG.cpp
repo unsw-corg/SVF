@@ -43,6 +43,7 @@
 #include "Util/SVFUtil.h"
 #include "SVF-FE/LLVMUtil.h"
 #include "Util/SVFModule.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -882,13 +883,13 @@ void CHGraph::printCH()
  */
 void CHGraph::dump(const std::string& filename)
 {
-    GraphPrinter::WriteGraphToFile(outs(), filename, this);
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), filename, this);
     printCH();
 }
 
 void CHGraph::view()
 {
-    llvm::ViewGraph(this, "Class Hierarchy Graph");
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), "ClassHierarchy", this, false, true);
 }
 
 namespace llvm
@@ -911,6 +912,11 @@ struct DOTGraphTraits<CHGraph*> : public DefaultDOTGraphTraits
     static std::string getGraphName(CHGraph*)
     {
         return "Class Hierarchy Graph";
+    }
+    /// isNodeHidden - If the function returns true, the given node is not
+    /// displayed in the graph
+    static bool isNodeHidden(CHNode *node) {
+        return node->reallyHideNode(false);
     }
     /// Return function name;
     static std::string getNodeLabel(CHNode *node, CHGraph*)

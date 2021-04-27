@@ -242,10 +242,7 @@ public:
     /// whether to extend the CHG with first field edges.
     virtual void buildCHG(bool extend);
 
-    void dump(const std::string& filename)
-    {
-        GraphPrinter::WriteGraphToFile(SVFUtil::outs(), filename, this);
-    }
+    void dump(const std::string& filename);
 
     void print(void);
 

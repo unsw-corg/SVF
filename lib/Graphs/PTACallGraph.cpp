@@ -31,6 +31,7 @@
 #include "Util/SVFModule.h"
 #include "SVF-FE/LLVMUtil.h"
 #include "Graphs/PTACallGraph.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -313,7 +314,7 @@ bool PTACallGraph::isReachableBetweenFunctions(const SVFFunction* srcFn, const S
  */
 void PTACallGraph::dump(const std::string& filename)
 {
-      GraphPrinter::WriteGraphToFile(outs(), filename, this);
+      GraphPrinter::SelectiveWriteGraphToFile(outs(), filename, this);
 }
 
 void PTACallGraph::view()

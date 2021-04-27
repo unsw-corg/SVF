@@ -31,9 +31,14 @@
 #define GENERICGRAPH_H_
 
 #include "Util/BasicTypes.h"
+#include "Util/WorkList.h"
+#include <llvm/ADT/GraphTraits.h>
 
 namespace SVF
 {
+
+typedef u32_t SubgraphIdTy;
+class GenericGraphBase;
 
 /*!
  * Generic edge on the graph as base class
@@ -90,12 +95,13 @@ public:
     {
         return dst;
     }
+
     //@}
 
     /// Add the hash function for std::set (we also can overload operator< to implement this)
     //  and duplicated elements in the set are not inserted (binary tree comparison)
     //@{
-    typedef struct
+    typedef struct equalGEdge_struct
     {
         bool operator()(const GenericEdge<NodeType>* lhs, const GenericEdge<NodeType>* rhs) const
         {
@@ -120,42 +126,31 @@ protected:
     static constexpr u64_t EdgeKindMask = (~0ULL) >> (64 - EdgeKindMaskBits);
 };
 
-
 /*!
- * Generic node on the graph as base class
+ * Generic node base for field not depending on generic parameters
+ * that might be needed in a non-generic context.
  */
-template<class NodeTy,class EdgeTy>
-class GenericNode
+class GenericNodeBase
 {
-
 public:
-    typedef NodeTy NodeType;
-    typedef EdgeTy EdgeType;
-    /// Edge kind
+    /// Node kind
     typedef s32_t GNodeK;
-    typedef OrderedSet<EdgeType*, typename EdgeType::equalGEdge> GEdgeSetTy;
-    /// Edge iterator
-    ///@{
-    typedef typename GEdgeSetTy::iterator iterator;
-    typedef typename GEdgeSetTy::const_iterator const_iterator;
-    ///@}
 
 private:
-    NodeID id;		///< Node ID
+    NodeID id;		    ///< Node ID
     GNodeK nodeKind;	///< Node kind
-
-    GEdgeSetTy InEdges; ///< all incoming edge of this node
-    GEdgeSetTy OutEdges; ///< all outgoing edge of this node
+    SubgraphIdTy subgraphID; ///< Which subgraph is the node in.
+    GenericGraphBase* graph;
 
 public:
     /// Constructor
-    GenericNode(NodeID i, GNodeK k): id(i),nodeKind(k)
+    GenericNodeBase(NodeID i, GNodeK k): id(i),nodeKind(k)
     {
 
     }
 
     /// Destructor
-    virtual ~GenericNode()
+    virtual ~GenericNodeBase()
     {
 
     }
@@ -166,10 +161,81 @@ public:
         return id;
     }
 
+
     /// Get node kind
     inline GNodeK getNodeKind() const
     {
         return nodeKind;
+    }
+
+    /// Get subgraph ID
+    inline SubgraphIdTy getSubgraphID() const
+    {
+        return subgraphID;
+    }
+
+    /// Set ID
+    inline void setSubgraphID(SubgraphIdTy newID)
+    {
+        subgraphID = newID;
+    }
+
+    // Get containing graph
+    const GenericGraphBase* getGraph() const
+    {
+        return graph;
+    }
+
+    // Set containing graph
+    void setGraph(GenericGraphBase* g)
+    {
+        graph = g;
+    }
+
+    /// Decide whether to hide a node in a dot graph.
+    /// Based on command line options, decide whether a node
+    /// should be hidden. This is used to implement dumping of
+    /// connected subgraphs by ignoring nodes not in the selected
+    /// connected subgraph. The maybe_hide parameter tells if this
+    /// node is of a sort that is not important and need not be
+    /// displayed ordinarily. However, if --dot-show-all is
+    /// specified then even these are shown.
+    bool reallyHideNode(bool maybe_hide);
+};
+
+/*!
+ * Generic node on the graph as base class
+ */
+template<class NodeTy,class EdgeTy>
+class GenericNode : public GenericNodeBase
+{
+
+public:
+    typedef NodeTy NodeType;
+    typedef EdgeTy EdgeType;
+    typedef OrderedSet<EdgeType*, typename EdgeType::equalGEdge> GEdgeSetTy;
+    /// Edge iterator
+    ///@{
+    typedef typename GEdgeSetTy::iterator iterator;
+    typedef typename GEdgeSetTy::const_iterator const_iterator;
+    ///@}
+
+private:
+
+    GEdgeSetTy InEdges; ///< all incoming edge of this node
+    GEdgeSetTy OutEdges; ///< all outgoing edge of this node
+
+public:
+    /// Constructor
+    GenericNode(NodeID i, GNodeK k): GenericNodeBase(i,k)
+    {
+
+    }
+
+    /// Destructor
+    virtual ~GenericNode()
+    {
+
     }
 
     /// Get incoming/outgoing edge set
@@ -319,11 +385,44 @@ public:
 };
 
 /*
+ * Base class for GenericGraph with some data that does not depend
+ * on the generic parameters.
+ */
+class GenericGraphBase
+{
+private:
+public:
+    /// Constructor
+    GenericGraphBase(): edgeNum(0),nodeNum(0), currentSubgraphId(0), subgraphNum(0), subgraphSizeMap()
+    {
+    }
+
+    /// Destructor
+    virtual ~GenericGraphBase()
+    {
+    }
+
+    u32_t edgeNum;		///< total num of node
+    u32_t nodeNum;		///< total num of edge
+
+    /// To avoid clutter, sometimes we want to focus on just a subset of
+    /// the graph. Nodes will be marked with a subgraph number, and
+    /// are considered part of the current subgraph if their subGraphId matches
+    /// the graph's currentSubgraphId.
+    SubgraphIdTy currentSubgraphId;
+
+    SubgraphIdTy subgraphNum; ///< total num of subgraphs
+
+    Map<SubgraphIdTy, u32_t> subgraphSizeMap;
+
+};
+
+/*
  * Generic graph for program representation
  * It is base class and needs to be instantiated
  */
 template<class NodeTy,class EdgeTy>
-class GenericGraph
+class GenericGraph : public GenericGraphBase
 {
 
 public:
@@ -339,7 +438,7 @@ public:
     //@}
 
     /// Constructor
-    GenericGraph(): edgeNum(0),nodeNum(0)
+    GenericGraph(): worklist()
     {
     }
 
@@ -384,6 +483,7 @@ public:
     inline void addGNode(NodeID id, NodeType* node)
     {
         IDToNodeMap[id] = node;
+        node->setGraph(this);
         nodeNum++;
     }
 
@@ -411,6 +511,7 @@ public:
         iterator it = IDToNodeMap.find(node->getId());
         assert(it != IDToNodeMap.end() && "can not find the node");
         IDToNodeMap.erase(it);
+        node->setGraph(nullptr);
     }
 
     /// Get total number of node/edge
@@ -432,12 +533,112 @@ public:
         edgeNum++;
     }
 
+    /// Get current subgraph id.
+    inline SubgraphIdTy getCurrentSubgraphId() const
+    {
+        return currentSubgraphId;
+    }
+
+    /// Set current subgraph id.
+    inline void setCurrentSubgraphId(SubgraphIdTy newId)
+    {
+        currentSubgraphId = newId;
+    }
+
+    /// Get current number of subgraphs
+    inline SubgraphIdTy getSubgraphNum() const
+    {
+        return subgraphNum;
+    }
+
+    /// Increment number of subgraphs
+    inline void incrementSubgraphNum()
+    {
+        subgraphNum++;
+    }
+
+    void worklist_push(NodeType* node)
+    {
+        auto id = node->getId();
+        if (id == 264)
+        {
+            llvm::outs() << "Pushing " << id << "onto worklist\n";
+        }
+        worklist.push(node);
+    }
+
+    /// Create a single subgraph rooted at the given node.
+    void createConnectedSubgraph(NodeType* root) {
+        incrementSubgraphNum();
+        SubgraphIdTy subid = getSubgraphNum();
+        u32_t numNodes = 0;
+        worklist_push(root);
+        while (!worklist.empty())
+        {
+            NodeType* node = worklist.pop();
+            node->setSubgraphID(subid);
+            numNodes++;
+            for (auto&& edge: node->getInEdges()) {
+                auto src = edge->getSrcNode();
+                if (src->getSubgraphID() == 0)
+                {
+                    // Not assigned to subgraph yet.
+                    worklist_push(src);
+                }
+            }
+            for (auto&& edge:node->getOutEdges()) {
+                auto dst = edge->getDstNode();
+                if (dst->getSubgraphID() == 0)
+                {
+                    // Not assigned to subgraph yet.
+                    worklist_push(dst);
+                }
+            }
+        }
+        subgraphSizeMap[subid] = numNodes;
+    }
+
+    /// Create connected subgraphs
+    void createConnectedSubgraphs()
+    {
+        if (subgraphNum > 0)
+        {
+            subgraphNum = 0;
+            subgraphSizeMap.clear();
+            for (auto&& entry: IDToNodeMap) {
+                NodeID id = entry.first;
+                NodeType* node = entry.second;
+                node->setSubgraphID(0);
+            }
+        }
+        for (auto&& entry: IDToNodeMap) {
+            NodeID id = entry.first;
+            NodeType* node = entry.second;
+            if (node->getSubgraphID() == 0)
+            {
+                // Not yet assigned to a subgraph.
+                createConnectedSubgraph(node);
+            }
+        }
+
+        u32_t max_size = 0;
+        SubgraphIdTy max_subgraph = 0;
+        for (auto&& entry: subgraphSizeMap) {
+            SubgraphIdTy subid = entry.first;
+            u32_t subgraph_size = entry.second;
+            if (subgraph_size > max_size) {
+                max_size = subgraph_size;
+                max_subgraph = subid;
+            }
+        }
+        // By default, set current subgraph to the largest
+        currentSubgraphId = max_subgraph;
+    }
 protected:
     IDToNodeMapTy IDToNodeMap; ///< node map
+    FILOWorkList<NodeType*> worklist; ///< Nodes who edges need to be explored
 
 public:
-    u32_t edgeNum;		///< total num of node
-    u32_t nodeNum;		///< total num of edge
 };
 
 } // End namespace SVF

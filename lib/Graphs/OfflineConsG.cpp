@@ -29,6 +29,7 @@
 
 #include "Util/Options.h"
 #include "Graphs/OfflineConsG.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -169,7 +170,7 @@ NodeID OfflineConsG::solveRep(OSCC* oscc, NodeID rep)
 void OfflineConsG::dump(std::string name)
 {
     if (Options::OCGDotGraph)
-        GraphPrinter::WriteGraphToFile(outs(), name, this);
+        GraphPrinter::SelectiveWriteGraphToFile(outs(), name, this);
 }
 
 
@@ -192,6 +193,12 @@ struct DOTGraphTraits<OfflineConsG*> : public DOTGraphTraits<PAG*>
     static std::string getGraphName(OfflineConsG*)
     {
         return "Offline Constraint Graph";
+    }
+
+    /// isNodeHidden - If the function returns true, the given node is not
+    /// displayed in the graph
+    static bool isNodeHidden(NodeType *node) {
+        return node->reallyHideNode(false);
     }
 
     /// Return label of a VFG node with two display mode

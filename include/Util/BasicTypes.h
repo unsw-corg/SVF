@@ -32,7 +32,7 @@
 
 #include "Util/SVFBasicTypes.h"
 #include "SVF-FE/GEPTypeBridgeIterator.h"
-#include "Graphs/GraphPrinter.h"
+#include <llvm/Support/ToolOutputFile.h>
 #include "Util/Casting.h"
 #include <llvm/ADT/SmallVector.h>		// for small vector
 #include <llvm/ADT/SparseBitVector.h>
@@ -193,7 +193,6 @@ typedef llvm::const_inst_iterator const_inst_iterator;
 typedef llvm::const_pred_iterator const_pred_iterator;
 typedef llvm::gep_type_iterator gep_type_iterator;
 typedef llvm::bridge_gep_iterator bridge_gep_iterator;
-typedef llvm::GraphPrinter GraphPrinter;
 typedef llvm::IRBuilder<> IRBuilder;
 typedef llvm::IntegerType IntegerType;
 

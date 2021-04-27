@@ -29,6 +29,7 @@
 
 #include "Graphs/ConsG.h"
 #include "Util/Options.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -523,7 +524,7 @@ bool ConstraintGraph::moveOutEdgesToRepNode(ConstraintNode*node, ConstraintNode*
  */
 void ConstraintGraph::dump(std::string name)
 {
-     GraphPrinter::WriteGraphToFile(outs(), name, this);
+     GraphPrinter::SelectiveWriteGraphToFile(outs(), name, this);
 }
 
 /*!
@@ -590,7 +591,7 @@ void ConstraintGraph::print()
  * View dot graph of Constraint graph from debugger.
  */
 void ConstraintGraph::view() {
-    llvm::ViewGraph(this, "Constraint Graph");
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), "ConstraintGraph", this, false, true);
 }
 
 /*!
@@ -616,7 +617,7 @@ struct DOTGraphTraits<ConstraintGraph*> : public DOTGraphTraits<PAG*>
 
     static bool isNodeHidden(NodeType *n) {
         PAGNode* node = PAG::getPAG()->getPAGNode(n->getId());
-        return node->isIsolatedNode();
+        return n->reallyHideNode(node->isIsolatedNode());
     }
 
     /// Return label of a VFG node with two display mode

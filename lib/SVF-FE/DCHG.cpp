@@ -13,8 +13,8 @@
 #include "SVF-FE/DCHG.h"
 #include "SVF-FE/CPPUtil.h"
 #include "Util/SVFUtil.h"
-
 #include "llvm/IR/DebugInfo.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 
@@ -1126,6 +1126,11 @@ std::string DCHGraph::diTypeToStr(const DIType *t)
 static std::string indent(size_t n)
 {
     return std::string(n, ' ');
+}
+
+void DCHGraph::dump(const std::string& filename)
+{
+    GraphPrinter::SelectiveWriteGraphToFile(SVFUtil::outs(), filename, this);
 }
 
 void DCHGraph::print(void)

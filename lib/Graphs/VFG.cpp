@@ -33,6 +33,7 @@
 #include "Graphs/VFG.h"
 #include "Util/SVFModule.h"
 #include "SVF-FE/LLVMUtil.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -753,7 +754,7 @@ VFGEdge* VFG::getIntraVFGEdge(const VFGNode* src, const VFGNode* dst, VFGEdge::V
  */
 void VFG::dump(const std::string& file, bool simple)
 {
-    GraphPrinter::WriteGraphToFile(outs(), file, this, simple);
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), file, this, simple);
 }
 
 /*!
@@ -761,7 +762,7 @@ void VFG::dump(const std::string& file, bool simple)
  */
 void VFG::view()
 {
-    llvm::ViewGraph(this, "Value Flow Graph");
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), "ValueFlowGraph", this, false, true);
 }
 
 
@@ -912,6 +913,11 @@ struct DOTGraphTraits<VFG*> : public DOTGraphTraits<PAG*>
         return "VFG";
     }
 
+    /// isNodeHidden - If the function returns true, the given node is not
+    /// displayed in the graph
+    static bool isNodeHidden(NodeType *node) {
+        return node->reallyHideNode(false);
+    }
     std::string getNodeLabel(NodeType *node, VFG *graph)
     {
         if (isSimple())

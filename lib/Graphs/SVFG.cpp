@@ -32,6 +32,7 @@
 #include "Graphs/SVFG.h"
 #include "Graphs/SVFGOPT.h"
 #include "Graphs/SVFGStat.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -521,7 +522,7 @@ SVFGEdge* SVFG::addInterIndirectVFRetEdge(const FormalOUTSVFGNode* src, const Ac
  */
 void SVFG::dump(const std::string& file, bool simple)
 {
-    GraphPrinter::WriteGraphToFile(outs(), file, this, simple);
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), file, this, simple);
 }
 
 /**
@@ -730,7 +731,8 @@ struct DOTGraphTraits<SVFG*> : public DOTGraphTraits<PAG*>
     /// isNodeHidden - If the function returns true, the given node is not
     /// displayed in the graph
     static bool isNodeHidden(SVFGNode *node) {
-        return node->getInEdges().empty() && node->getOutEdges().empty();
+        bool hide_suggestion = node->getInEdges().empty() && node->getOutEdges().empty();
+        return node->reallyHideNode(hide_suggestion);
     }
 
     std::string getNodeLabel(NodeType *node, SVFG *graph)

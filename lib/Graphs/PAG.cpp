@@ -31,6 +31,7 @@
 #include "Graphs/PAG.h"
 #include "SVF-FE/LLVMUtil.h"
 #include "SVF-FE/ICFGBuilder.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -1080,7 +1081,7 @@ bool PAGNode::isIsolatedNode() const{
  */
 void PAG::dump(std::string name)
 {
-    GraphPrinter::WriteGraphToFile(outs(), name, this);
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), name, this);
 }
 
 /*!
@@ -1088,7 +1089,7 @@ void PAG::dump(std::string name)
  */
 void PAG::view()
 {
-    llvm::ViewGraph(this, "ProgramAssignmentGraph");
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), "PAG", this, false, true);
 }
 
 /*!
@@ -1123,9 +1124,9 @@ struct DOTGraphTraits<PAG*> : public DefaultDOTGraphTraits
 
     /// isNodeHidden - If the function returns true, the given node is not
     /// displayed in the graph
-	static bool isNodeHidden(PAGNode *node) {
-		return node->isIsolatedNode();
-	}
+    static bool isNodeHidden(PAGNode *node) {
+        return node->reallyHideNode(node->isIsolatedNode());
+    }
 
     /// Return label of a VFG node with two display mode
     /// Either you can choose to display the name of the value or the whole instruction
@@ -1133,6 +1134,9 @@ struct DOTGraphTraits<PAG*> : public DefaultDOTGraphTraits
     {
         std::string str;
         raw_string_ostream rawstr(str);
+        if (SubgraphIdTy subid = node->getSubgraphID()) {
+            rawstr << "sg" << subid << ":";
+        }
         // print function info
         if (node->getFunction())
             rawstr << "[" << node->getFunction()->getName() << "] ";

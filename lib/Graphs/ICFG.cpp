@@ -33,6 +33,7 @@
 #include "Graphs/ICFG.h"
 #include "Graphs/PAG.h"
 #include "Graphs/PTACallGraph.h"
+#include "Graphs/GraphPrinter.h"
 
 using namespace SVF;
 using namespace SVFUtil;
@@ -397,7 +398,7 @@ ICFGEdge* ICFG::addRetEdge(ICFGNode* srcNode, ICFGNode* dstNode, const Instructi
  */
 void ICFG::dump(const std::string& file, bool simple)
 {
-    GraphPrinter::WriteGraphToFile(outs(), file, this, simple);
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), file, this, simple);
 }
 
 /*!
@@ -405,7 +406,7 @@ void ICFG::dump(const std::string& file, bool simple)
  */
 void ICFG::view()
 {
-    llvm::ViewGraph(this, "Interprocedural Control-Flow Graph");
+    GraphPrinter::SelectiveWriteGraphToFile(outs(), "ICFG", this, false, true);
 }
 
 /*!
@@ -456,6 +457,12 @@ struct DOTGraphTraits<ICFG*> : public DOTGraphTraits<PAG*>
     static std::string getGraphName(ICFG*)
     {
         return "ICFG";
+    }
+
+    /// isNodeHidden - If the function returns true, the given node is not
+    /// displayed in the graph
+    static bool isNodeHidden(NodeType *node) {
+        return node->reallyHideNode(false);
     }
 
     std::string getNodeLabel(NodeType *node, ICFG *graph)
